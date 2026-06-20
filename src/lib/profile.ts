@@ -36,15 +36,22 @@ export function saveProfile(p: Profile) {
 
 export function useProfile(): Profile {
   const [p, setP] = useState<Profile>(DEFAULT_PROFILE);
+
   useEffect(() => {
     setP(loadProfile());
-    const h = () => setP(loadProfile());
-    window.addEventListener("profile-updated", h);
-    window.addEventListener("storage", h);
+    
+    const handleUpdate = () => {
+      setP(loadProfile());
+    };
+
+    window.addEventListener("profile-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    
     return () => {
-      window.removeEventListener("profile-updated", h);
-      window.removeEventListener("storage", h);
+      window.removeEventListener("profile-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
+
   return p;
 }

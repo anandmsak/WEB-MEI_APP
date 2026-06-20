@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MEI Hostel</string>
+    <string name="title_activity_main">MEI Hostel</string>
+    <string name="package_name">com.meihostel.app</string>
+    <string name="custom_url_scheme">com.meihostel.app</string>
+</resources>

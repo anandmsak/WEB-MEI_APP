@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, User, Info, BellPlus, QrCode, UtensilsCrossed, KeyRound, UserCircle, LogOut, Settings } from "lucide-react";
 import logo from "@/assets/mei-logo.png";
-import { useProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,10 +13,59 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
+// Helper function to read storage instantly before the component mounts
+const getSavedProfileOrDefault = () => {
+  const fallback = {
+    name: "ANANDHA KRISHNAN P",
+    rollNo: "124UEC007",
+    hostel: "MEC",
+    course: "BE (ECE)",
+    room: "A108",
+    phone: "7540030095",
+  };
+  
+  if (typeof window === "undefined") return fallback;
+  try {
+    const data = localStorage.getItem("mei.profile");
+    if (data) {
+      return { ...fallback, ...JSON.parse(data) };
+    }
+  } catch (e) {
+    console.error("Dashboard early sync error:", e);
+  }
+  return fallback;
+};
+
 function Dashboard() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const profile = useProfile();
+  
+  // ✅ FIX: Directly initialize with the cached storage data immediately on render
+  const [profile, setProfile] = useState(getSavedProfileOrDefault);
+
+  const syncDashboardProfile = () => {
+    try {
+      const data = localStorage.getItem("mei.profile");
+      if (data) {
+        setProfile(JSON.parse(data));
+      }
+    } catch (e) {
+      console.error("Dashboard sync error:", e);
+    }
+  };
+
+  // Keep state matching if changes occur while the page remains active
+  useEffect(() => {
+    syncDashboardProfile();
+
+    window.addEventListener("profile-updated", syncDashboardProfile);
+    window.addEventListener("storage", syncDashboardProfile);
+    
+    return () => {
+      window.removeEventListener("profile-updated", syncDashboardProfile);
+      window.removeEventListener("storage", syncDashboardProfile);
+    };
+  }, []);
 
   const items = [
     { icon: User, label: "Request List", onClick: () => navigate({ to: "/request" }) },
@@ -39,6 +87,7 @@ function Dashboard() {
         </button>
         <h1 className="text-white text-2xl font-bold">Dashboard</h1>
       </header>
+      
       <div className="flex items-start gap-4 px-6 pt-8">
         <img src={logo} alt="MEI Hostel" width={100} height={100} className="w-24 h-24 object-contain" />
         <div className="pt-2">

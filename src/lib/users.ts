@@ -1,13 +1,45 @@
-// User storage stub — to be wired to Firestore `users` collection later.
-import type { Profile } from "@/lib/profile";
+import { db } from "./firebaseConfig";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 
-export async function updateUser(uid: string, patch: Partial<Profile>): Promise<void> {
-  console.log("[users] updateUser", uid, patch);
-  // TODO: await updateDoc(doc(db, "users", uid), patch)
+export interface UserProfile {
+  name: string;
+  rollNo: string;
+  phone: string;
+  room?: string;
+  hostel?: string;
+  course?: string;
 }
 
-export async function getUser(uid: string): Promise<Profile | null> {
-  console.log("[users] getUser", uid);
-  // TODO: const snap = await getDoc(doc(db, "users", uid)); return snap.data() as Profile
-  return null;
+export async function getFirestoreUsers(): Promise<UserProfile[]> {
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    return snap.docs.map((d) => {
+      const data = d.data();
+      
+      // Ensures number fields get cleanly converted to string formats
+      const databasePhone = data.phone !== undefined && data.phone !== null ? data.phone : "";
+      const safePhoneString = String(databasePhone).trim();
+
+      return {
+        rollNo: d.id, 
+        name: data.name || d.id,
+        phone: safePhoneString,
+        room: data.room || "",
+        hostel: data.hostel || "MEC",
+        course: data.course || "BE (ECE)"
+      };
+    });
+  } catch (err) {
+    console.error("Error reading users from cloud database:", err);
+    return [];
+  }
+}
+
+export async function updateUser(rollNo: string, data: Partial<UserProfile>): Promise<void> {
+  try {
+    const userRef = doc(db, "users", rollNo);
+    await updateDoc(userRef, data);
+  } catch (err) {
+    console.error("Failed to sync profile update upstream:", err);
+  }
 }

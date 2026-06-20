@@ -2,8 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Search, Calendar, Clock, User, MessageSquare, Plus, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { addPass, getPasses, type Pass } from "@/lib/passes";
-import { isAllowed } from "@/lib/allowedUsers";
-import { loadProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/request")({
   head: () => ({
@@ -21,7 +19,6 @@ function StatusTrack({ item }: { item: Item }) {
   const three = THREE_STAGE.has(item.type);
   const status = item.status;
   
-  // Determine how many dots are filled
   let filled = 0;
   if (three) {
     if (status === "Pending") filled = 1;
@@ -49,6 +46,9 @@ function StatusTrack({ item }: { item: Item }) {
 }
 
 function RequestCard({ item }: { item: Item }) {
+  // If a pass entry doesn't have valid date records, skip rendering to prevent blank cards
+  if (!item.fromDate && !item.toDate) return null;
+
   return (
     <div className="relative bg-white rounded-2xl shadow-sm overflow-hidden mx-4 mb-4">
       <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-[#b8f5d8] rounded-l-[100%]" aria-hidden />
@@ -101,9 +101,18 @@ function RequestCard({ item }: { item: Item }) {
 
 function RequestPage() {
   const navigate = useNavigate();
+  
+  const [userProfile, setUserProfile] = useState({
+    name: "ANANDHA KRISHNAN P",
+    rollNo: "124UEC007",
+    hostel: "MEC",
+    course: "BE (ECE)",
+    room: "A108",
+    phone: "7540030095",
+  });
+  
   const [items, setItems] = useState<Pass[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [restrictMsg, setRestrictMsg] = useState("");
   const [form, setForm] = useState({
     fromDate: "",
     fromTime: "",
@@ -114,19 +123,56 @@ function RequestPage() {
     approved: true,
   });
 
-  // Local sync engine to make sure updates instantly refresh on screen after Firestore operations
-  const fetchAllPasses = async () => {
+  const syncActiveProfile = () => {
+    try {
+      const data = localStorage.getItem("mei.profile");
+      if (data) {
+        setUserProfile(JSON.parse(data));
+      }
+    } catch (e) {
+      console.error("Local Storage sync error:", e);
+    }
+  };
+
+  const fetchAllPasses = async (currentRoll: string, currentName: string) => {
     try {
       const data = await getPasses();
-      setItems(data);
+      const filtered = data.filter((p) => {
+        const passRoll = (p.ownerRoll || p.rollNumber || "").trim().toUpperCase();
+        const passUser = (p.owner || p.user || "").trim().toLowerCase();
+        return (
+          passRoll === currentRoll.trim().toUpperCase() ||
+          passUser === currentName.trim().toLowerCase()
+        );
+      });
+
+      // SORTING LOGIC: Newest timestamp stamp string values sit at the absolute top
+      const sorted = filtered.sort((a, b) => {
+        const stampA = a.stamp || "";
+        const stampB = b.stamp || "";
+        return stampB.localeCompare(stampA);
+      });
+
+      setItems(sorted);
     } catch (err) {
       console.error("Error updating real-time records:", err);
     }
   };
 
   useEffect(() => {
-    fetchAllPasses();
+    syncActiveProfile();
+    window.addEventListener("profile-updated", syncActiveProfile);
+    window.addEventListener("storage", syncActiveProfile);
+    
+    return () => {
+      window.removeEventListener("profile-updated", syncActiveProfile);
+      window.removeEventListener("storage", syncActiveProfile);
+    };
   }, []);
+
+  useEffect(() => {
+    fetchAllPasses(userProfile.rollNo, userProfile.name);
+  }, [userProfile.rollNo, userProfile.name]);
 
   const formatStamp = () => {
     const d = new Date();
@@ -155,17 +201,9 @@ function RequestPage() {
   const handleSubmit = async () => {
     if (!form.fromDate || !form.fromTime || !form.toDate || !form.toTime) return;
     
-    const me = loadProfile();
-    if (!isAllowed(me.name, me.rollNo)) {
-      setRestrictMsg("You are not authorised to apply passes. Contact admin.");
-      return;
-    }
-    
     const isThree = THREE_STAGE.has(form.type);
     const status = form.approved ? "Approved" : isThree ? "Pending" : "Approved";
     
-    // We construct the raw object without an initial explicit string ID field
-    // so Firestore's autoDoc generator cleanly configures it.
     const newPassData = {
       fromDate: toDmy(form.fromDate),
       fromTime: toAmPm(form.fromTime),
@@ -175,19 +213,15 @@ function RequestPage() {
       type: form.type,
       reason: form.reason || "-",
       status,
-      owner: me.name,
-      ownerRoll: me.rollNo,
-      ownerRoom: me.room,
+      owner: userProfile.name,
+      ownerRoll: userProfile.rollNo,
+      ownerRoom: userProfile.room,
     };
 
-    // Pushing data upstream to Firestore collection
     await addPass(newPassData);
-    
-    // Instantly updating UI states to sync cleanly with new database records
-    await fetchAllPasses();
+    await fetchAllPasses(userProfile.rollNo, userProfile.name);
     
     setShowForm(false);
-    setRestrictMsg("");
     setForm({ fromDate: "", fromTime: "", toDate: "", toTime: "", type: "Outing", reason: "", approved: true });
   };
 
@@ -197,40 +231,44 @@ function RequestPage() {
         <button onClick={() => navigate({ to: "/" })} aria-label="Back">
           <ArrowLeft className="h-6 w-6 text-white" />
         </button>
-        <h1 className="text-white text-2xl font-bold flex-1">Request</h1>
+        <div className="flex-1">
+          <h1 className="text-white text-xl font-bold">Request</h1>
+          <p className="text-indigo-200 text-xs truncate">Active: {userProfile.name}</p>
+        </div>
         <Search className="h-6 w-6 text-white" />
       </header>
       
       <div className="pt-4">
-        {items.map((it, i) => (
-          <RequestCard key={it.id ?? i} item={it} />
-        ))}
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-500 py-12 text-center italic">No passes submitted yet for this profile.</p>
+        ) : (
+          items.map((it, i) => (
+            <RequestCard key={it.id ?? i} item={it} />
+          ))
+        )}
       </div>
       
       <button
         onClick={() => setShowForm(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#3a1a8a] text-white shadow-lg flex items-center justify-center"
-        aria-label="Add"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#3a1a8a] text-white shadow-lg flex items-center justify-center z-40"
+        aria-label="Add Pass"
       >
         <Plus className="h-7 w-7" />
       </button>
 
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-[#1e6bb8] to-[#3a1a8a] px-4 py-3">
               <h2 className="text-white text-lg font-bold">New Pass</h2>
             </div>
             <div className="p-4 space-y-3">
-              {restrictMsg && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">{restrictMsg}</p>
-              )}
               <div>
                 <label className="block text-sm text-gray-700 mb-1">Type</label>
                 <select
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white outline-none"
                 >
                   {TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
@@ -238,26 +276,26 @@ function RequestPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">From Date</label>
-                  <input type="date" value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm" />
+                  <input type="date" value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">From Time</label>
-                  <input type="time" value={form.fromTime} onChange={(e) => setForm({ ...form, fromTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm" />
+                  <input type="time" value={form.fromTime} onChange={(e) => setForm({ ...form, fromTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">To Date</label>
-                  <input type="date" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm" />
+                  <input type="date" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">To Time</label>
-                  <input type="time" value={form.toTime} onChange={(e) => setForm({ ...form, toTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm" />
+                  <input type="time" value={form.toTime} onChange={(e) => setForm({ ...form, toTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-1">Reason</label>
-                <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Reason" className="w-full border rounded-md px-3 py-2 text-sm" />
+                <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Reason" className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer py-1 select-none">
                 <input
                   type="checkbox"
                   checked={form.approved}
