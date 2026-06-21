@@ -7,10 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import logo from "@/assets/mei-logo.png";
 
 function NotFoundComponent() {
   return (
@@ -117,13 +118,95 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// ✅ UPDATE ONLY THIS WRAPPER COMPONENT INSIDE YOUR src/routes/__root.tsx
+function SplashIntroWrapper({ children }: { children: React.ReactNode }) {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // Increased to 2200ms so both text lines reveal fully and hold exactly like the video sequence
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!showSplash) return <>{children}</>;
+
+  return (
+    <div className="fixed inset-0 bg-[#FFFFFF] flex flex-col items-center justify-center z-[9999] pointer-events-none select-none">
+      <style>{`
+        /* Logo initial expansion and upper-third translation */
+        @keyframes logoFluidMotion {
+          0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+          30% { transform: scale(1.0) translateY(20px); opacity: 1; }
+          100% { transform: scale(1.05) translateY(-15px); opacity: 1; }
+        }
+        
+        /* Text 1: Micro drop-down entry (-10px to 0px) */
+        @keyframes mahendraDescend {
+          0% { opacity: 0; transform: translateY(-10px); }
+          100% { opacity: 1; transform: translateY(0px); }
+        }
+        
+        /* Text 2: Micro slide-up entry (15px to 0px) */
+        @keyframes subtitleAscend {
+          0% { opacity: 0; transform: translateY(15px); }
+          100% { opacity: 1; transform: translateY(0px); }
+        }
+
+        .animate-logo-fluid {
+          animation: logoFluidMotion 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        
+        /* Triggered exactly as logo finishes scaling */
+        .animate-text-mahendra {
+          opacity: 0;
+          animation: mahendraDescend 400ms cubic-bezier(0.16, 1, 0.3, 1) 550ms forwards;
+        }
+        
+        /* Rises up smoothly to create perfect visual convergence */
+        .animate-text-sub {
+          opacity: 0;
+          animation: subtitleAscend 450ms cubic-bezier(0.16, 1, 0.3, 1) 750ms forwards;
+        }
+      `}</style>
+
+      {/* Strictly locked to the horizontal center axis */}
+      <div className="flex flex-col items-center justify-center text-center">
+        
+        {/* Globe/M Logo Frame */}
+        <div className="w-[160px] h-[160px] flex items-center justify-center animate-logo-fluid mb-2">
+          <img src={logo} alt="" className="w-full h-full object-contain" />
+        </div>
+
+        {/* Text 1: MAHENDRA - Settles downward */}
+        <h2 
+          className="text-[#1565c0] text-[23px] font-bold tracking-[0.55em] uppercase pl-[0.55em] mt-3 animate-text-mahendra"
+          style={{ fontFamily: "'Montserrat', sans-serif" }}
+        >
+          MAHENDRA
+        </h2>
+
+        {/* Text 2: Subtitle - Slides upward */}
+        <p 
+          className="text-[#4b5563] text-[14.5px] font-normal tracking-normal mt-[24px] animate-text-sub"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+        >
+          Hostel Management System(MHMS)
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <SplashIntroWrapper>
+        <Outlet />
+      </SplashIntroWrapper>
     </QueryClientProvider>
   );
 }

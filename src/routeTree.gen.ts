@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RequestRouteImport } from './routes/request'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PassTimingRouteImport } from './routes/pass-timing'
+import { Route as ParcelScanRouteImport } from './routes/parcel-scan'
 import { Route as ManageRouteImport } from './routes/manage'
 import { Route as FoodChoiceRouteImport } from './routes/food-choice'
 import { Route as EmergencyRequestRouteImport } from './routes/emergency-request'
@@ -30,6 +31,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PassTimingRoute = PassTimingRouteImport.update({
   id: '/pass-timing',
   path: '/pass-timing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParcelScanRoute = ParcelScanRouteImport.update({
+  id: '/parcel-scan',
+  path: '/parcel-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManageRoute = ManageRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/emergency-request': typeof EmergencyRequestRoute
   '/food-choice': typeof FoodChoiceRoute
   '/manage': typeof ManageRoute
+  '/parcel-scan': typeof ParcelScanRoute
   '/pass-timing': typeof PassTimingRoute
   '/profile': typeof ProfileRoute
   '/request': typeof RequestRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/emergency-request': typeof EmergencyRequestRoute
   '/food-choice': typeof FoodChoiceRoute
   '/manage': typeof ManageRoute
+  '/parcel-scan': typeof ParcelScanRoute
   '/pass-timing': typeof PassTimingRoute
   '/profile': typeof ProfileRoute
   '/request': typeof RequestRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/emergency-request': typeof EmergencyRequestRoute
   '/food-choice': typeof FoodChoiceRoute
   '/manage': typeof ManageRoute
+  '/parcel-scan': typeof ParcelScanRoute
   '/pass-timing': typeof PassTimingRoute
   '/profile': typeof ProfileRoute
   '/request': typeof RequestRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/emergency-request'
     | '/food-choice'
     | '/manage'
+    | '/parcel-scan'
     | '/pass-timing'
     | '/profile'
     | '/request'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/emergency-request'
     | '/food-choice'
     | '/manage'
+    | '/parcel-scan'
     | '/pass-timing'
     | '/profile'
     | '/request'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/emergency-request'
     | '/food-choice'
     | '/manage'
+    | '/parcel-scan'
     | '/pass-timing'
     | '/profile'
     | '/request'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   EmergencyRequestRoute: typeof EmergencyRequestRoute
   FoodChoiceRoute: typeof FoodChoiceRoute
   ManageRoute: typeof ManageRoute
+  ParcelScanRoute: typeof ParcelScanRoute
   PassTimingRoute: typeof PassTimingRoute
   ProfileRoute: typeof ProfileRoute
   RequestRoute: typeof RequestRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/pass-timing'
       fullPath: '/pass-timing'
       preLoaderRoute: typeof PassTimingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parcel-scan': {
+      id: '/parcel-scan'
+      path: '/parcel-scan'
+      fullPath: '/parcel-scan'
+      preLoaderRoute: typeof ParcelScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manage': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmergencyRequestRoute: EmergencyRequestRoute,
   FoodChoiceRoute: FoodChoiceRoute,
   ManageRoute: ManageRoute,
+  ParcelScanRoute: ParcelScanRoute,
   PassTimingRoute: PassTimingRoute,
   ProfileRoute: ProfileRoute,
   RequestRoute: RequestRoute,

@@ -1,7 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Search, Calendar, Clock, User, MessageSquare, Plus, Check } from "lucide-react";
+import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { addPass, getPasses, type Pass } from "@/lib/passes";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+// Import your exact custom assets verbatim
+import calendarIcon from "@/assets/icons/1000162640.ico";
+import clockIcon from "@/assets/icons/1000162640 (1).ico";
+import userBubbleIcon from "@/assets/icons/1000162640 (2).ico";
+import rightBubbleIcon from "@/assets/icons/1000162640 (3).ico";
+import leftBubbleIcon from "@/assets/icons/1000162640 (4).ico";
+import trackerLineAsset from "@/assets/icons/copilot_image_1781932883693.jpeg";
 
 export const Route = createFileRoute("/request")({
   head: () => ({
@@ -15,86 +27,124 @@ type Item = Pass;
 const TYPES = ["Outing", "Holiday", "Leave", "Semester Holiday", "Interview", "Symposium", "NPTL/Gate"] as const;
 const THREE_STAGE = new Set(["Leave", "Semester Holiday", "Interview", "Symposium", "NPTL/Gate", "NPTEL"]);
 
-function StatusTrack({ item }: { item: Item }) {
-  const three = THREE_STAGE.has(item.type);
-  const status = item.status;
-  
-  let filled = 0;
-  if (three) {
-    if (status === "Pending") filled = 1;
-    else if (status === "Verified") filled = 2;
-    else if (status === "Approved") filled = 3;
-  } else {
-    filled = status === "Approved" ? 1 : 0;
-  }
-  
-  const count = three ? 3 : 1;
-  const dots = Array.from({ length: count });
-  
-  return (
-    <div className="flex items-center gap-0 mt-2">
-      {dots.map((_, i) => (
-        <div key={i} className="flex items-center flex-1 last:flex-none">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center ${i < filled ? "bg-[#0e6b3a]" : "bg-gray-300"}`}>
-            <Check className="h-4 w-4 text-white" strokeWidth={3} />
-          </div>
-          {i < count - 1 && <div className="flex-1 h-[2px] bg-gray-300" />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function RequestCard({ item }: { item: Item }) {
-  // If a pass entry doesn't have valid date records, skip rendering to prevent blank cards
   if (!item.fromDate && !item.toDate) return null;
 
+  const isThreeStage = THREE_STAGE.has(item.type);
+  const status = item.status;
+  
+  let filledStages = 0;
+  if (isThreeStage) {
+    if (status === "Pending") filledStages = 1;
+    else if (status === "Verified") filledStages = 2;
+    else if (status === "Approved") filledStages = 3;
+  }
+
   return (
-    <div className="relative bg-white rounded-2xl shadow-sm overflow-hidden mx-4 mb-4">
-      <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-[#b8f5d8] rounded-l-[100%]" aria-hidden />
-      <div className="relative p-4 space-y-2">
-        <div className="flex items-center gap-2 text-[15px] text-black">
-          <span className="w-12">From :</span>
-          <Calendar className="h-5 w-5 text-gray-700" />
-          <span>{item.fromDate}</span>
+    <div className="relative bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden mx-3 p-3 flex flex-col justify-between border border-gray-100 font-sans">
+      
+      {/* ✅ EXACT MATCH: Muted, soft minimal pastel green background block with custom side curvature positioning */}
+      <div 
+        className="absolute right-0 top-0 bottom-0 w-[43%] bg-[#a7f3d0] opacity-50 pointer-events-none" 
+        style={{ borderRadius: "140px 0 0 140px / 50% 0 0 50%" }}
+      />
+
+      {/* Rows Container */}
+      <div className="relative z-10 space-y-2 text-[14.5px] text-[#2d2d2d] font-normal">
+        
+        {/* From Row */}
+        <div className="flex items-center gap-2">
+          <span className="w-14 text-gray-700">From :</span>
+          <img src={calendarIcon} alt="" className="w-4 h-4 object-contain" />
+          <span className="text-[#2d2d2d] font-normal">{item.fromDate}</span>
           <span className="text-gray-300 mx-1">|</span>
-          <Clock className="h-5 w-5 text-gray-700" />
-          <span>{item.fromTime}</span>
+          <img src={clockIcon} alt="" className="w-4 h-4 object-contain" />
+          <span className="text-[#2d2d2d] font-normal">{item.fromTime}</span>
         </div>
-        <div className="flex items-center gap-2 text-[15px] text-black">
-          <span className="w-12">To :</span>
-          <Calendar className="h-5 w-5 text-gray-700" />
-          <span>{item.toDate}</span>
+
+        {/* To Row */}
+        <div className="flex items-center gap-2">
+          <span className="w-14 text-gray-700">To :</span>
+          <img src={calendarIcon} alt="" className="w-4 h-4 object-contain" />
+          <span className="text-[#2d2d2d] font-normal">{item.toDate}</span>
           <span className="text-gray-300 mx-1">|</span>
-          <Clock className="h-5 w-5 text-gray-700" />
-          <span>{item.toTime}</span>
+          <img src={clockIcon} alt="" className="w-4 h-4 object-contain" />
+          <span className="text-[#2d2d2d] font-normal">{item.toTime}</span>
         </div>
+
+        {/* Timestamp Row */}
         {item.stamp && (
-          <div className="flex items-center gap-2 text-[15px] text-black">
-            <Clock className="h-5 w-5 text-gray-700" />
+          <div className="flex items-center gap-3.5 pl-0.5 text-gray-800">
+            <img src={clockIcon} alt="" className="w-4 h-4 object-contain" />
             <span>{item.stamp}</span>
           </div>
         )}
+
+        {/* Type Row */}
         {item.type && (
-          <div className="flex items-center gap-2 text-[15px] text-black">
-            <User className="h-5 w-5 text-gray-700" />
+          <div className="flex items-center gap-3.5 pl-0.5 text-gray-800">
+            <img src={userBubbleIcon} alt="" className="w-4 h-4 object-contain" />
             <span>{item.type}</span>
           </div>
         )}
+        
+        {/* Reason Row */}
         {item.reason && (
-          <div className="flex items-center gap-2 text-[15px] text-black">
-            <MessageSquare className="h-5 w-5 text-gray-700" />
+          <div className="flex items-center gap-3.5 pl-0.5 text-gray-800">
+            <img src={leftBubbleIcon} alt="" className="w-4 h-4 object-contain" />
             <span>{item.reason}</span>
           </div>
         )}
+
+        {/* Status Text Row */}
         {item.status && (
-          <div className="flex items-center gap-2 text-[15px] text-black">
-            <MessageSquare className="h-5 w-5 text-gray-700" />
+          <div className="flex items-center gap-3.5 pl-0.5 text-gray-800">
+            <img src={rightBubbleIcon} alt="" className="w-4 h-4 object-contain" />
             <span>{item.status}</span>
           </div>
         )}
-        {item.status && <StatusTrack item={item} />}
+
       </div>
+
+      {/* ✅ EXACT MATCH REMOVAL: Only render the progress timeline if it is a multi-stage request (isThreeStage) */}
+      {isThreeStage && item.status && (
+        <div className="relative z-10 mt-4 mb-1.5 w-full flex justify-start pl-1">
+          <div className="flex items-center w-[88%] relative">
+            
+            {/* Soft thin slate line running beneath the bubbles */}
+            <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-[1px] bg-gray-300 z-0" />
+
+            {/* Checkmark Bullets Container */}
+            <div className="flex justify-between w-full relative z-10">
+              {Array.from({ length: 3 }).map((_, i) => {
+                const isActivated = i < filledStages;
+                return (
+                  <div 
+                    key={i} 
+                    className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                      isActivated 
+                        ? "bg-[#0e3e20]" // Deep, clean minimal muted dark green
+                        : "bg-[#cbd5e1]" // Light slate-ash gray background color
+                    }`}
+                  >
+                    <svg 
+                      className={`w-3 h-3 ${isActivated ? "text-white" : "text-gray-400"}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2.5" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -146,7 +196,6 @@ function RequestPage() {
         );
       });
 
-      // SORTING LOGIC: Newest timestamp stamp string values sit at the absolute top
       const sorted = filtered.sort((a, b) => {
         const stampA = a.stamp || "";
         const stampB = b.stamp || "";
@@ -226,19 +275,16 @@ function RequestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3eff5] pb-24">
-      <header className="bg-gradient-to-r from-[#1e6bb8] to-[#3a1a8a] px-4 py-4 flex items-center gap-4">
-        <button onClick={() => navigate({ to: "/" })} aria-label="Back">
-          <ArrowLeft className="h-6 w-6 text-white" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-white text-xl font-bold">Request</h1>
-          <p className="text-indigo-200 text-xs truncate">Active: {userProfile.name}</p>
+    <div className="min-h-screen bg-[#f5f2f7] pb-24 font-sans antialiased">
+      <header className="bg-gradient-to-r from-[#1e6bb8] to-[#3a1a8a] px-4 py-3.5 flex flex-col shadow-sm">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate({ to: "/" })} className="text-white text-xl font-bold" aria-label="Go back">←</button>
+          <h1 className="text-white text-xl font-semibold tracking-wide">Request</h1>
         </div>
-        <Search className="h-6 w-6 text-white" />
+        <p className="text-white/70 text-xs mt-1 pl-8 font-normal">Active: {userProfile.name}</p>
       </header>
       
-      <div className="pt-4">
+      <div className="mt-4 space-y-4">
         {items.length === 0 ? (
           <p className="text-sm text-gray-500 py-12 text-center italic">No passes submitted yet for this profile.</p>
         ) : (
@@ -276,24 +322,58 @@ function RequestPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">From Date</label>
-                  <input type="date" value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-full border rounded-md px-2 py-2 text-sm bg-white text-left flex items-center justify-between outline-none">
+                        <span className={cn(!form.fromDate && "text-gray-400")}>
+                          {form.fromDate ? format(new Date(form.fromDate), "dd-MM-yyyy") : "Select Date"}
+                        </span>
+                        <CalendarIcon className="h-4 w-4 text-gray-400" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={form.fromDate ? new Date(form.fromDate) : undefined}
+                        onSelect={(date) => setForm({ ...form, fromDate: date ? format(date, "yyyy-MM-dd") : "" })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">From Time</label>
-                  <input type="time" value={form.fromTime} onChange={(e) => setForm({ ...form, fromTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
+                  <input type="time" value={form.fromTime} onChange={(e) => setForm({ ...form, fromTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">To Date</label>
-                  <input type="date" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-full border rounded-md px-2 py-2 text-sm bg-white text-left flex items-center justify-between outline-none">
+                        <span className={cn(!form.toDate && "text-gray-400")}>
+                          {form.toDate ? format(new Date(form.toDate), "dd-MM-yyyy") : "Select Date"}
+                        </span>
+                        <CalendarIcon className="h-4 w-4 text-gray-400" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={form.toDate ? new Date(form.toDate) : undefined}
+                        onSelect={(date) => setForm({ ...form, toDate: date ? format(date, "yyyy-MM-dd") : "" })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">To Time</label>
-                  <input type="time" value={form.toTime} onChange={(e) => setForm({ ...form, toTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white" />
+                  <input type="time" value={form.toTime} onChange={(e) => setForm({ ...form, toTime: e.target.value })} className="w-full border rounded-md px-2 py-2 text-sm bg-white outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-1">Reason</label>
-                <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Reason" className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
+                <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Reason" className="w-full border rounded-md px-3 py-2 text-sm bg-white outline-none" />
               </div>
               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer py-1 select-none">
                 <input
